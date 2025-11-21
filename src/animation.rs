@@ -1025,8 +1025,8 @@ impl AnimationEngine {
     /// Skip to the next hunk (code block)
     /// Returns true if a hunk was skipped, false otherwise
     pub fn skip_hunk(&mut self) -> bool {
-        // Find the next HunkEnd marker
-        for i in self.current_step..self.steps.len() {
+        // Find the next HunkEnd marker starting from the next step
+        for i in (self.current_step + 1)..self.steps.len() {
             if matches!(self.steps[i], AnimationStep::HunkEnd) {
                 // Skip to the step after HunkEnd
                 self.current_step = i + 1;
@@ -1041,8 +1041,8 @@ impl AnimationEngine {
     /// Skip to the next file
     /// Returns true if a file was skipped, false otherwise
     pub fn skip_file(&mut self) -> bool {
-        // Find the next FileEnd marker
-        for i in self.current_step..self.steps.len() {
+        // Find the next FileEnd marker starting from the next step
+        for i in (self.current_step + 1)..self.steps.len() {
             if matches!(self.steps[i], AnimationStep::FileEnd) {
                 // Skip to the step after FileEnd
                 self.current_step = i + 1;
