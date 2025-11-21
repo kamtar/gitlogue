@@ -158,6 +158,12 @@ pub enum AnimationStep {
         text: String,
     },
     ResetState,
+    /// Marker for the start of a hunk (code block)
+    HunkStart,
+    /// Marker for the end of a hunk (code block)
+    HunkEnd,
+    /// Marker for the end of a file
+    FileEnd,
 }
 
 /// Animation state machine
@@ -359,6 +365,8 @@ impl AnimationEngine {
                     self.steps.push(AnimationStep::Pause {
                         duration_ms: (self.speed_ms as f64 * OPEN_CMD_PAUSE) as u64,
                     });
+                    // Mark end of file
+                    self.steps.push(AnimationStep::FileEnd);
                 }
                 // For deleted files, skip editor animation and only run rm + git add
                 (false, FileStatus::Deleted) => {
@@ -382,6 +390,8 @@ impl AnimationEngine {
                     self.steps.push(AnimationStep::Pause {
                         duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
                     });
+                    // Mark end of file
+                    self.steps.push(AnimationStep::FileEnd);
                 }
                 // For renamed/moved files, skip editor animation and only run mv + git add
                 (false, FileStatus::Renamed) => {
@@ -408,6 +418,8 @@ impl AnimationEngine {
                     self.steps.push(AnimationStep::Pause {
                         duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
                     });
+                    // Mark end of file
+                    self.steps.push(AnimationStep::FileEnd);
                 }
                 // Normal files (Added, Modified, etc.) - full editor animation
                 (false, _) => {
@@ -462,6 +474,8 @@ impl AnimationEngine {
                     self.steps.push(AnimationStep::Pause {
                         duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
                     });
+                    // Mark end of file
+                    self.steps.push(AnimationStep::FileEnd);
                 }
             }
         }
@@ -537,6 +551,9 @@ impl AnimationEngine {
 
         // Process each hunk
         for hunk in &change.hunks {
+            // Mark the start of a hunk (code block)
+            self.steps.push(AnimationStep::HunkStart);
+
             // Calculate target line in current buffer
             // hunk.old_start is 1-indexed (Git line numbers start at 1)
             // We need to convert to 0-indexed and adjust by how many lines we've added/removed
@@ -567,6 +584,9 @@ impl AnimationEngine {
                 .count() as i64;
 
             line_offset += additions - deletions;
+
+            // Mark the end of a hunk (code block)
+            self.steps.push(AnimationStep::HunkEnd);
 
             // Add pause between hunks
             self.steps.push(AnimationStep::Pause {
@@ -926,6 +946,9 @@ impl AnimationEngine {
                 self.current_file_path = None;
                 self.active_pane = ActivePane::Terminal;
             }
+            AnimationStep::HunkStart | AnimationStep::HunkEnd | AnimationStep::FileEnd => {
+                // These are markers, no action needed during normal playback
+            }
         }
 
         // Update scroll to keep cursor centered
@@ -997,6 +1020,38 @@ impl AnimationEngine {
         }
 
         self.buffer.scroll_offset = logical_offset;
+    }
+
+    /// Skip to the next hunk (code block)
+    /// Returns true if a hunk was skipped, false otherwise
+    pub fn skip_hunk(&mut self) -> bool {
+        // Find the next HunkEnd marker starting from the next step
+        for i in (self.current_step + 1)..self.steps.len() {
+            if matches!(self.steps[i], AnimationStep::HunkEnd) {
+                // Skip to the step after HunkEnd
+                self.current_step = i + 1;
+                // Clear any pause
+                self.pause_until = None;
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Skip to the next file
+    /// Returns true if a file was skipped, false otherwise
+    pub fn skip_file(&mut self) -> bool {
+        // Find the next FileEnd marker starting from the next step
+        for i in (self.current_step + 1)..self.steps.len() {
+            if matches!(self.steps[i], AnimationStep::FileEnd) {
+                // Skip to the step after FileEnd
+                self.current_step = i + 1;
+                // Clear any pause
+                self.pause_until = None;
+                return true;
+            }
+        }
+        false
     }
 
     pub fn is_finished(&self) -> bool {
