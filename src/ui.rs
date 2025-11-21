@@ -159,6 +159,14 @@ impl<'a> UI<'a> {
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             self.state = UIState::Finished;
                         }
+                        KeyCode::Char('b') => {
+                            // Skip current code block (hunk)
+                            self.engine.skip_hunk();
+                        }
+                        KeyCode::Char('f') => {
+                            // Skip current file
+                            self.engine.skip_file();
+                        }
                         _ => {}
                     }
                 }
