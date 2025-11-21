@@ -177,8 +177,14 @@ This displays:
 
 While gitlogue is running:
 
-- `Esc` - Quit the application
+- `Esc` or `q` - Quit the application
 - `Ctrl+C` - Quit the application
+- `b` - Skip current code block (hunk)
+- `f` - Skip current file
+
+The skip controls allow you to quickly move through the animation:
+- Press `b` to skip to the end of the current code block being animated (useful when a hunk has many lines)
+- Press `f` to skip to the next file (useful when a file has many changes you want to skip)
 
 ## Use Cases
 
